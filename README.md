@@ -1,13 +1,7 @@
 # Hype Video Controller
 ![Hype-ScrollMagic](https://playground.maxziebell.de/Hype/VideoController/HypeVideoController.jpg)
 
-Below is an updated and more comprehensive documentation for the **HypeVideoController** extension, reflecting the latest features (version 1.0.3) and best practices:
-
----
-
-# HypeVideoController Extension
-
-The **HypeVideoController** extension enhances your Tumult Hype documents with powerful, flexible video playback control. It ensures videos start playing seamlessly during scene transitions, allows you to react to video lifecycle events, and provides a robust API to manage playback, volume, and seeking—all without leaving Hype’s familiar interface.
+The **Hype Video Controller** extension enhances your Tumult Hype documents with powerful, flexible video playback control. It ensures videos start playing seamlessly during scene transitions, allows you to react to video lifecycle events, and provides a robust API to manage playback, volume, and seeking—all without leaving Hype’s familiar interface.
 
 **Latest Version:** 1.0.3
 
