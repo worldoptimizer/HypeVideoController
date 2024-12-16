@@ -3,8 +3,6 @@
 
 The **Hype Video Controller** extension enhances your Tumult Hype documents with powerful, flexible video playback control. It ensures videos start playing seamlessly during scene transitions, allows you to react to video lifecycle events, and provides a robust API to manage playback, volume, and seeking—all without leaving Hype’s familiar interface.
 
-**Latest Version:** 1.0.3
-
 ---
 
 ## Key Benefits
