@@ -6,7 +6,7 @@
 /*
  * Version-History
  * 1.0.0 Initial release under MIT-license
- * 1.0.1 Added defaults system with autoStart configuration
+ * 1.0.1 Added defaults system with autoStart, autoMute and autoInline configuration
  * 1.0.2 Added scene observer with automatic source cleanup and configurable defaults
  * 1.0.3 Added data attribute overrides for individual video settings
  */
