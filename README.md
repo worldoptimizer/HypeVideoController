@@ -40,7 +40,7 @@ The extension comes with built-in defaults to streamline setup. You can override
 |------------------|----------|-------------------------------------------------------------------|
 | `autoStart`      | `true`   | Automatically start videos when their scene is prepared.          |
 | `autoMute`       | `true`   | Start videos muted. Handy for silent playback during transitions. |
-| `autoPlaysInline`| `true`   | Allows videos to play inline on mobile devices.                   |
+| `autoInline`| `true`   | Allows videos to play inline on mobile devices.                   |
 | `removeSources`  | `true`   | Removes video `<source>` elements when scenes become hidden.      |
 | `autoObserver`   | `true`   | Automatically observes scene transitions to manage video playback.|
 
@@ -81,7 +81,7 @@ For example, to control autostart for a single video:
 
 Other supported overrides:  
 - `data-video-automute`  
-- `data-video-autoplaysinline`  
+- `data-video-autoInline`  
 - (In future versions, more attributes may be added.)
 
 These per-video settings take precedence over the global defaults.
