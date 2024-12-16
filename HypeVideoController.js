@@ -20,7 +20,7 @@ if ("HypeVideoController" in window === false) {
         const _default = {
             autoStart: true,
             autoMute: true,
-            autoPlaysInline: true,
+            autoInline: true,
             removeSources: true,
             autoObserver: true,
         };
@@ -227,7 +227,7 @@ if ("HypeVideoController" in window === false) {
                 requestAnimationFrame(() => {
                     // Apply settings based on data attributes or defaults
                     if (getVideoSetting(video, 'autoMute')) video.muted = true;
-                    if (getVideoSetting(video, 'autoPlaysInline')) video.playsInline = true;
+                    if (getVideoSetting(video, 'autoInline')) video.playsInline = true;
                     
                     // Only attempt autoplay if enabled for this video
                     if (getVideoSetting(video, 'autoStart')) {
