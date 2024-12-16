@@ -1,5 +1,5 @@
 /*!
- * Hype Video Controller Extension
+ * Hype Video Controller v1.0.3
  * Copyright (2024) Max Ziebell. MIT-license
  */
 
