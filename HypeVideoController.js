@@ -1,5 +1,5 @@
 /*!
- * Hype Video Controller v1.0.3
+ * Hype Video Controller v1.0.4
  * Copyright (2024) Max Ziebell. MIT-license
  */
 
@@ -9,6 +9,7 @@
  * 1.0.1 Added defaults system with autoStart, autoMute and autoInline configuration
  * 1.0.2 Added scene observer with automatic source cleanup and configurable defaults
  * 1.0.3 Added data attribute overrides for individual video settings
+ * 1.0.4 Added support for unnamed video control (first video in scene)
  */
 
 if ("HypeVideoController" in window === false) {
@@ -271,6 +272,10 @@ if ("HypeVideoController" in window === false) {
              */
             hypeDocument.getVideo = function(name) {
                 const currentScene = this.getElementById(this.currentSceneId());
+                // If no name provided, return first video in current scene
+                if (!name) {
+                    return currentScene.querySelector('video');
+                }
                 // Check if name looks like a CSS selector
                 if (name.match(/^[.#\[]/) || name.includes(' ')) {
                     return currentScene.querySelector(name);
@@ -422,7 +427,7 @@ if ("HypeVideoController" in window === false) {
         window.HYPE_eventListeners.push({ "type": "HypeSceneUnload", "callback": HypeSceneUnload });
 
         return {
-            version: '1.0.3',
+            version: '1.0.4',
             setDefault: setDefault,
             getDefault: getDefault,
         };
