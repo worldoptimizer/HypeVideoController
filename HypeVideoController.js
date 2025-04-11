@@ -1,6 +1,6 @@
 /*!
  * Hype Video Controller v1.0.5
- * Copyright (2024) Max Ziebell. MIT-license
+ * Copyright (2025) Max Ziebell. MIT-license
  */
 
 /*
