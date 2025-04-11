@@ -1,5 +1,5 @@
 /*!
- * Hype Video Controller v1.0.4
+ * Hype Video Controller v1.0.5
  * Copyright (2024) Max Ziebell. MIT-license
  */
 
@@ -10,6 +10,7 @@
  * 1.0.2 Added scene observer with automatic source cleanup and configurable defaults
  * 1.0.3 Added data attribute overrides for individual video settings
  * 1.0.4 Added support for unnamed video control (first video in scene)
+ * 1.0.5 Fixed race condition on video autoplay (for Safari)
  */
 
 if ("HypeVideoController" in window === false) {
@@ -225,10 +226,11 @@ if ("HypeVideoController" in window === false) {
             const videos = currentScene.querySelectorAll('video');
             
             videos.forEach(video => {
+                // Apply settings based on data attributes or defaults
+                if (getVideoSetting(video, 'autoMute')) video.muted = true;
+                if (getVideoSetting(video, 'autoInline')) video.playsInline = true;
+                
                 requestAnimationFrame(() => {
-                    // Apply settings based on data attributes or defaults
-                    if (getVideoSetting(video, 'autoMute')) video.muted = true;
-                    if (getVideoSetting(video, 'autoInline')) video.playsInline = true;
                     
                     // Only attempt autoplay if enabled for this video
                     if (getVideoSetting(video, 'autoStart')) {
@@ -427,7 +429,7 @@ if ("HypeVideoController" in window === false) {
         window.HYPE_eventListeners.push({ "type": "HypeSceneUnload", "callback": HypeSceneUnload });
 
         return {
-            version: '1.0.4',
+            version: '1.0.5',
             setDefault: setDefault,
             getDefault: getDefault,
         };
