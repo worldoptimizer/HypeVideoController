@@ -1,28 +1,33 @@
 /*!
- * Hype Video Controller v1.0.5
+ * Hype Video Controller v1.0.8
  * Copyright (2025) Max Ziebell. MIT-license
  */
 
 /*
  * Version-History
  * 1.0.0 Initial release under MIT-license
- * 1.0.1 Added defaults system with autoStart, autoMute and autoInline configuration
+ * 1.0.1 Added defaults system with autoPlay, autoMute and autoPlaysInline configuration
  * 1.0.2 Added scene observer with automatic source cleanup and configurable defaults
  * 1.0.3 Added data attribute overrides for individual video settings
  * 1.0.4 Added support for unnamed video control (first video in scene)
  * 1.0.5 Fixed race condition on video autoplay (for Safari)
+ * 1.0.6 Added support for Hype Reactive Content and mute/unmute all videos in the current scene
+ * 1.0.7 Fixed Video Started event triggering when autoplay is blocked by browser
+ * 1.0.8 Added HypeSceneLoad event listener to remove autoplay attribute from all videos in the scene
+ *       Refactored autoStart to autoPlay and autoInline to autoPlaysInline
  */
 
 if ("HypeVideoController" in window === false) {
     window['HypeVideoController'] = (function () {
 
+        const _version = "1.0.8";
         const processedVideos = new WeakSet();
         const sceneObservers = new WeakMap();
         
         const _default = {
-            autoStart: true,
+            autoPlay: true,
             autoMute: true,
-            autoInline: true,
+            autoPlaysInline: true,
             removeSources: true,
             autoObserver: true,
         };
@@ -163,6 +168,11 @@ if ("HypeVideoController" in window === false) {
             if (videoName) {
                 hypeDocument.triggerCustomBehaviorNamed(`${eventType} ${videoName}`);
             }
+
+            // Support Hype Reactive Content if available
+            if (window.HypeReactiveContent) {
+                hypeDocument.refreshReactiveContentDebounced();
+            }
         }
 
         /**
@@ -181,9 +191,14 @@ if ("HypeVideoController" in window === false) {
                         triggerVideoEvent(hypeDocument, 'Video Ended', video);
                     });
 
-                    // Handle video start
-                    video.addEventListener('play', () => {
-                        triggerVideoEvent(hypeDocument, 'Video Started', video);
+                    // Handle video start - only trigger if video is actually playing
+                    video.addEventListener('playing', () => {
+                        // Double-check that video is actually playing and not from failed autoplay
+                        if (!video.paused && !video.ended && !video.hasAttribute('data-autoplay-failed')) {
+                            triggerVideoEvent(hypeDocument, 'Video Started', video);
+                        }
+                        // Clear the failed flag once video successfully plays
+                        video.removeAttribute('data-autoplay-failed');
                     });
 
                     // Handle video pause
@@ -228,15 +243,19 @@ if ("HypeVideoController" in window === false) {
             videos.forEach(video => {
                 // Apply settings based on data attributes or defaults
                 if (getVideoSetting(video, 'autoMute')) video.muted = true;
-                if (getVideoSetting(video, 'autoInline')) video.playsInline = true;
+                if (getVideoSetting(video, 'autoPlaysInline')) video.playsInline = true;
                 
                 requestAnimationFrame(() => {
                     
                     // Only attempt autoplay if enabled for this video
-                    if (getVideoSetting(video, 'autoStart')) {
+                    if (getVideoSetting(video, 'autoPlay')) {
+                        video.removeAttribute('autoplay');
+                        video.autoplay = false;
                         video.currentTime = 0;
                         video.play().catch(error => {
                             console.warn(`Failed to autoplay video: ${video.id || 'unnamed'}`, error);
+                            // Mark that this video failed to autoplay so events aren't triggered
+                            video.setAttribute('data-autoplay-failed', 'true');
                         });
                     }
                 });
@@ -395,6 +414,29 @@ if ("HypeVideoController" in window === false) {
                 return null;
             };
             
+            /**
+             * Mutes all videos in the current scene
+             */
+            hypeDocument.muteAllVideos = function() {
+                const currentScene = this.getElementById(this.currentSceneId());
+                const videos = currentScene.querySelectorAll('video');
+                
+                videos.forEach(video => {
+                    video.muted = true;
+                });
+            };
+
+            /**
+             * Unmutes all videos in the current scene
+             */
+            hypeDocument.unmuteAllVideos = function() {
+                const currentScene = this.getElementById(this.currentSceneId());
+                const videos = currentScene.querySelectorAll('video');
+                
+                videos.forEach(video => {
+                    video.muted = false;
+                });
+            };
         }
 
         /**
@@ -420,16 +462,33 @@ if ("HypeVideoController" in window === false) {
             stopSceneVideos(hypeDocument);
         }
 
+        /**
+         * Handles the HypeSceneLoad event.
+         * 
+         * @param {Object} hypeDocument - The Hype document instance.
+         * @param {HTMLElement} element - The element associated with the event.
+         * @param {Object} event - The event object.
+         */
+        function HypeSceneLoad(hypeDocument, element, event) {
+            //remove autoplay attribute from all videos in the scene
+            const videos = element.querySelectorAll('video');
+            videos.forEach(video => {
+                video.removeAttribute('autoplay');
+                video.autoplay = false;
+            });
+        }
+
         // Register event listeners
         if ("HYPE_eventListeners" in window === false) {
             window.HYPE_eventListeners = Array();
         }
         window.HYPE_eventListeners.push({ "type": "HypeDocumentLoad", "callback": HypeDocumentLoad });
         window.HYPE_eventListeners.push({ "type": "HypeScenePrepareForDisplay", "callback": HypeScenePrepareForDisplay });
+        window.HYPE_eventListeners.push({ "type": "HypeSceneLoad", "callback": HypeSceneLoad });
         window.HYPE_eventListeners.push({ "type": "HypeSceneUnload", "callback": HypeSceneUnload });
 
         return {
-            version: '1.0.5',
+            version: _version,
             setDefault: setDefault,
             getDefault: getDefault,
         };
