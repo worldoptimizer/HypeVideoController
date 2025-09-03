@@ -555,5 +555,5 @@ if ("HypeVideoController" in window === false) {
             getDefault: getDefault,
         };
 
-})();
+    })();
 }
