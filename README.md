@@ -144,7 +144,7 @@ The extension triggers Hype Custom Behaviors at key video lifecycle points. Use 
 As a scene is **prepared** for display (before it fully transitions in), the extension checks for videos set to autostart and plays them. This ensures your videos are ready to go the moment the scene finishes transitioning.
 
 **Outgoing Scenes:**  
-When a scene starts to unload, the extension automatically stops all running videos. If `removeSources` is enabled, the `<source>` tags are removed, freeing memory and preventing unintended playback from hidden elements.
+When a scene starts to unload, the extension automatically stops all running videos.
 
 ---
 
