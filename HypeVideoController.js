@@ -1,5 +1,5 @@
 /*!
- * Hype Video Controller v1.0.8
+ * Hype Video Controller v1.0.9
  * Copyright (2025) Max Ziebell. MIT-license
  */
 
@@ -15,21 +15,27 @@
  * 1.0.7 Fixed Video Started event triggering when autoplay is blocked by browser
  * 1.0.8 Added HypeSceneLoad event listener to remove autoplay attribute from all videos in the scene
  *       Refactored autoStart to autoPlay and autoInline to autoPlaysInline
+ * 1.0.9 Added Playback Stall Detection to fire "Video Ended" on freeze (endOnStall)
+ *       Added Autoplay Failure Fallback to fire "Video Ended" if autoplay is blocked (endOnAutoplayFail)
+ *       Removed removeSources functionality
  */
 
 if ("HypeVideoController" in window === false) {
     window['HypeVideoController'] = (function () {
 
-        const _version = "1.0.8";
+        const _version = "1.0.9";
         const processedVideos = new WeakSet();
         const sceneObservers = new WeakMap();
+        const stallMonitors = new WeakMap();
         
         const _default = {
             autoPlay: true,
             autoMute: true,
             autoPlaysInline: true,
-            removeSources: true,
             autoObserver: true,
+            endOnStall: true,
+            stallTimeout: 2000,
+            endOnAutoplayFail: true,
         };
 
 
@@ -91,14 +97,6 @@ if ("HypeVideoController" in window === false) {
                         // If scene becomes hidden, stop all videos in it
                         if (!isVisible) {
                             stopVideosInScene(sceneElement);
-                            // Remove sources if enabled
-                            if (_default.removeSources) {
-                                sceneElement.querySelectorAll('video').forEach(video => {
-                                    video.querySelectorAll('source').forEach(source => {
-                                        source.remove();
-                                    });
-                                });
-                            }
                         }
                     }
                 });
@@ -176,7 +174,45 @@ if ("HypeVideoController" in window === false) {
         }
 
         /**
-         * Sets up ended event listeners for videos in the current scene
+         * Monitors a video for stalled playback. If the video's currentTime
+         * does not change within the stallTimeout, it is considered stalled.
+         *
+         * @param {HTMLVideoElement} video The video element to monitor.
+         * @param {Object} hypeDocument The Hype document instance.
+         */
+        function monitorForStalls(video, hypeDocument) {
+            if (!getVideoSetting(video, 'endOnStall')) return;
+            clearStallMonitor(video);
+
+            let lastTime = video.currentTime;
+            const stallTimeout = _default.stallTimeout || 2000;
+
+            const timer = setTimeout(() => {
+                if (!video.paused && video.currentTime === lastTime) {
+                    console.warn(`Video playback stalled. Triggering "Video Ended".`, video);
+                    video.pause();
+                    triggerVideoEvent(hypeDocument, 'Video Ended', video);
+                }
+            }, stallTimeout);
+
+            stallMonitors.set(video, timer);
+        }
+
+        /**
+         * Clears the stall monitor for a specific video.
+         *
+         * @param {HTMLVideoElement} video The video element.
+         */
+        function clearStallMonitor(video) {
+            if (stallMonitors.has(video)) {
+                clearTimeout(stallMonitors.get(video));
+                stallMonitors.delete(video);
+            }
+        }
+
+        /**
+         * Sets up event listeners for videos in the current scene
+         * including ended, playing, pause, and stall detection.
          * 
          * @param {Object} hypeDocument - The Hype document instance.
          */
@@ -186,24 +222,31 @@ if ("HypeVideoController" in window === false) {
             
             videos.forEach(video => {
                 if (!processedVideos.has(video)) {
+                    
                     // Handle video end
                     video.addEventListener('ended', () => {
+                        clearStallMonitor(video);
                         triggerVideoEvent(hypeDocument, 'Video Ended', video);
                     });
 
-                    // Handle video start - only trigger if video is actually playing
+                    // Handle video start
                     video.addEventListener('playing', () => {
-                        // Double-check that video is actually playing and not from failed autoplay
+                        clearStallMonitor(video);
                         if (!video.paused && !video.ended && !video.hasAttribute('data-autoplay-failed')) {
                             triggerVideoEvent(hypeDocument, 'Video Started', video);
                         }
-                        // Clear the failed flag once video successfully plays
                         video.removeAttribute('data-autoplay-failed');
                     });
 
                     // Handle video pause
                     video.addEventListener('pause', () => {
+                        clearStallMonitor(video);
                         triggerVideoEvent(hypeDocument, 'Video Paused', video);
+                    });
+                    
+                    // Handle video buffering by starting the stall monitor
+                    video.addEventListener('waiting', () => {
+                        monitorForStalls(video, hypeDocument);
                     });
 
                     processedVideos.add(video);
@@ -233,6 +276,7 @@ if ("HypeVideoController" in window === false) {
 
         /**
          * Starts videos with autoplay enabled in the current scene.
+         * Includes fallback for failed autoplay.
          * 
          * @param {Object} hypeDocument - The Hype document instance.
          */
@@ -252,11 +296,27 @@ if ("HypeVideoController" in window === false) {
                         video.removeAttribute('autoplay');
                         video.autoplay = false;
                         video.currentTime = 0;
-                        video.play().catch(error => {
-                            console.warn(`Failed to autoplay video: ${video.id || 'unnamed'}`, error);
-                            // Mark that this video failed to autoplay so events aren't triggered
-                            video.setAttribute('data-autoplay-failed', 'true');
-                        });
+                        
+                        const playPromise = video.play();
+
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                // Autoplay was blocked by the browser.
+                                console.warn(`Autoplay failed for video: ${video.id || 'unnamed'}`, error);
+                                
+                                // Mark that this video failed to autoplay for state management
+                                video.setAttribute('data-autoplay-failed', 'true');
+
+                                // Check if we should trigger the ended event as a fallback.
+                                if (getVideoSetting(video, 'endOnAutoplayFail')) {
+                                    console.log(`Triggering "Video Ended" due to autoplay failure.`);
+                                    // Use a small timeout to ensure this happens in the next event loop tick.
+                                    setTimeout(() => {
+                                        triggerVideoEvent(hypeDocument, 'Video Ended', video);
+                                    }, 0);
+                                }
+                            });
+                        }
                     }
                 });
             });
@@ -273,6 +333,8 @@ if ("HypeVideoController" in window === false) {
             videos.forEach(video => {
                 video.pause();
                 if (reset) video.currentTime = 0; // Reset to the beginning
+                // Clean up the flag if it exists
+                video.removeAttribute('data-autoplay-failed');
             });
         }
 
@@ -493,5 +555,5 @@ if ("HypeVideoController" in window === false) {
             getDefault: getDefault,
         };
 
-    })();
+})();
 }
