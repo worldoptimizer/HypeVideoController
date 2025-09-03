@@ -34,15 +34,17 @@ Simply include the **HypeVideoController** extension script alongside your Tumul
 
 The extension comes with built-in defaults to streamline setup. You can override these defaults globally or per video.
 
-**Global Defaults:**
+### Global Defaults
 
-| Setting          | Default | Description                                                       |
-|------------------|----------|-------------------------------------------------------------------|
-| `autoStart`      | `true`   | Automatically start videos when their scene is prepared.          |
-| `autoMute`       | `true`   | Start videos muted. Handy for silent playback during transitions. |
-| `autoInline`| `true`   | Allows videos to play inline on mobile devices.                   |
-| `removeSources`  | `true`   | Removes video `<source>` elements when scenes become hidden.      |
-| `autoObserver`   | `true`   | Automatically observes scene transitions to manage video playback.|
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `autoPlay` | `true` | Automatically attempts to play videos when their scene is displayed. |
+| `autoMute` | `true` | Automatically mutes videos. **Required on most browsers for autoplay to succeed.** |
+| `autoPlaysInline` | `true` | Sets the `playsinline` attribute, allowing videos to play within their element on mobile devices instead of forcing fullscreen. |
+| `autoObserver` | `true` | Automatically observes scene transitions to pause and unload videos in hidden scenes, saving resources. |
+| `endOnStall` | `true` | If a video freezes (stalls) during playback, automatically triggers the "Video Ended" event. |
+| `stallTimeout` | `2000` | The time in milliseconds to wait before considering a playing video to be stalled. |
+| `endOnAutoplayFail` | `true` | If the browser blocks a video's autoplay, automatically triggers the "Video Ended" event to allow the sequence to continue. |
 
 **Changing Defaults:**
 
