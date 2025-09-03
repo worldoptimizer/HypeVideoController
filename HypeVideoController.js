@@ -1,5 +1,5 @@
 /*!
- * Hype Video Controller v1.0.9
+ * Hype Video Controller v1.1.0
  * Copyright (2025) Max Ziebell. MIT-license
  */
 
@@ -18,12 +18,14 @@
  * 1.0.9 Added Playback Stall Detection to fire "Video Ended" on freeze (endOnStall)
  *       Added Autoplay Failure Fallback to fire "Video Ended" if autoplay is blocked (endOnAutoplayFail)
  *       Removed removeSources functionality
+ * 1.1.0 Added "Video Stalled" and "Video Autoplay Failed" events and configurable stall-timeout. 
+ *       Improved stall detection architecture and added backwards-compatible data-attribute aliases.
  */
 
 if ("HypeVideoController" in window === false) {
     window['HypeVideoController'] = (function () {
 
-        const _version = "1.0.9";
+        const _version = "1.1.0";
         const processedVideos = new WeakSet();
         const sceneObservers = new WeakMap();
         const stallMonitors = new WeakMap();
@@ -174,24 +176,30 @@ if ("HypeVideoController" in window === false) {
         }
 
         /**
-         * Monitors a video for stalled playback. If the video's currentTime
-         * does not change within the stallTimeout, it is considered stalled.
+         * Monitors any playing video for stalls. This function is always active.
+         * It will ALWAYS fire a "Video Stalled" event upon detecting a stall.
+         * It will THEN check the "endOnStall" setting to decide if it should
+         * also take the action of ending the video.
          *
          * @param {HTMLVideoElement} video The video element to monitor.
          * @param {Object} hypeDocument The Hype document instance.
          */
         function monitorForStalls(video, hypeDocument) {
-            if (!getVideoSetting(video, 'endOnStall')) return;
             clearStallMonitor(video);
 
             let lastTime = video.currentTime;
-            const stallTimeout = _default.stallTimeout || 2000;
+            const stallTimeout = getVideoSetting(video, 'stallTimeout');
 
             const timer = setTimeout(() => {
                 if (!video.paused && video.currentTime === lastTime) {
-                    console.warn(`Video playback stalled. Triggering "Video Ended".`, video);
-                    video.pause();
-                    triggerVideoEvent(hypeDocument, 'Video Ended', video);
+                    console.warn(`Video playback stalled.`);
+                    triggerVideoEvent(hypeDocument, 'Video Stalled', video);
+
+                    if (getVideoSetting(video, 'endOnStall')) {
+                        console.log(`"endOnStall" is true. Triggering "Video Ended" as a fallback.`);
+                        video.pause();
+                        triggerVideoEvent(hypeDocument, 'Video Ended', video);
+                    }
                 }
             }, stallTimeout);
 
@@ -255,22 +263,43 @@ if ("HypeVideoController" in window === false) {
         }
 
         /**
-         * Gets the effective setting for a video element considering data attributes
+         * Gets the effective setting for a video element considering data attributes.
+         * Supports boolean and numerical settings, with backwards-compatible aliases.
          * 
          * @param {HTMLElement} video - The video element
          * @param {String} setting - The setting name
-         * @returns {Boolean} - The effective setting value
+         * @returns {*} - The effective setting value
          */
         function getVideoSetting(video, setting) {
-            const dataAttr = `data-video-${setting.toLowerCase()}`;
-            const attrValue = video.getAttribute(dataAttr);
+            const settingAliases = {
+                endOnStall: 'end-on-stall',
+                endOnAutoplayFail: 'end-on-autoplay-fail',
+                stallTimeout: 'stall-timeout',
+                autoPlaysInline: 'plays-inline',
+                autoMute: 'auto-mute',
+                autoPlay: 'auto-play'
+            };
             
-            // If attribute exists, use its value
+            const alias = settingAliases[setting] || setting.toLowerCase();
+            const longName = setting.toLowerCase();
+            
+            let attrValue = video.getAttribute(`data-video-${alias}`);
+            if (attrValue === null) {
+                attrValue = video.getAttribute(`data-video-${longName}`);
+            }
+
             if (attrValue !== null) {
-                return attrValue === 'true';
+                if (typeof _default[setting] === 'boolean') {
+                    return attrValue === 'true';
+                }
+                if (typeof _default[setting] === 'number') {
+                    const parsedValue = parseInt(attrValue, 10);
+                    if (!isNaN(parsedValue)) {
+                        return parsedValue;
+                    }
+                }
             }
             
-            // Fall back to default
             return _default[setting];
         }
 
@@ -306,6 +335,7 @@ if ("HypeVideoController" in window === false) {
                                 
                                 // Mark that this video failed to autoplay for state management
                                 video.setAttribute('data-autoplay-failed', 'true');
+                                triggerVideoEvent(hypeDocument, 'Video Autoplay Failed', video);
 
                                 // Check if we should trigger the ended event as a fallback.
                                 if (getVideoSetting(video, 'endOnAutoplayFail')) {
@@ -324,15 +354,20 @@ if ("HypeVideoController" in window === false) {
 
         /**
          * Stops and resets all videos in the current scene.
+         * Also cleans up state-tracking attributes.
          * 
          * @param {Object} hypeDocument - The Hype document instance.
+         * @param {boolean} reset - Whether to reset the video's currentTime.
          */
         function stopSceneVideos(hypeDocument, reset) {
             const currentScene = hypeDocument.getElementById(hypeDocument.currentSceneId());
+            if (!currentScene) return;
+
             const videos = currentScene.querySelectorAll('video');
             videos.forEach(video => {
                 video.pause();
                 if (reset) video.currentTime = 0; // Reset to the beginning
+                
                 // Clean up the flag if it exists
                 video.removeAttribute('data-autoplay-failed');
             });
