@@ -126,11 +126,13 @@ Use the provided API methods to control video playback. These methods can be cal
 
 The extension triggers Hype Custom Behaviors at key video lifecycle points. Use these events to synchronize animations, run scripts, or trigger other behaviors in Hype:
 
-| Event             | Triggered When...             | Example Use Case                     |
-|-------------------|--------------------------------|--------------------------------------|
-| `Video Started`   | The video starts playing.      | Begin a related timeline animation.  |
-| `Video Paused`    | The video is paused.           | Show a "Paused" overlay.             |
-| `Video Ended`     | The video finishes playback.   | Automatically navigate to next scene.|
+| Event | Triggered When... | Example Use Case |
+| :--- | :--- | :--- |
+| `Video Started` | The video successfully begins playback. | Begin a related timeline animation or hide a "Loading..." message. |
+| `Video Paused` | The video is paused by the user or by code. | Show a "Paused" overlay or a play button icon. |
+| `Video Ended` | The video finishes playback naturally, or when a stall/autoplay failure fallback is triggered. | Automatically navigate to the next scene or loop the video. |
+| `Video Autoplay Failed` | The browser blocks the video from automatically playing on scene load. | Display a custom "Tap to Play" button to the user. |
+| `Video Stalled` | A playing video freezes for a configurable duration (`stallTimeout`). | Show a "Buffering..." indicator or log a playback error for analytics. |
 
 **Tip:** If your video has a `data-video-name` attribute, the event name is suffixed with that name. For example, `Video Ended intro` if the `data-video-name` is `"intro"`.
 
